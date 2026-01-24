@@ -1,5 +1,5 @@
 {
-  "name": "ytvideoplayer",
+  "name": "videoplayer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "hls.js": "^1.6.15",
+    "lucide-react": "^0.562.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
