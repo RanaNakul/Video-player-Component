@@ -19,20 +19,24 @@ import {
   ChevronLast,
   ChevronLeft,
   PictureInPicture,
+  RotateCcw,
 } from "lucide-react";
 
-export default function VideoPlayer({ src, poster, timeline }) {
+export default function VideoPlayer({ src, poster, timeline, colorScheme }) {
   const videoRef = useRef(null);
   const rangeRef = useRef(null);
   const hlsRef = useRef(null);
   const volumeRef = useRef(null);
   const containerRef = useRef(null);
   const sleepTimeoutRef = useRef(null);
+  const lastVolumeRef = useRef(0.7);
+  const cinemaModeRef = useRef(false);
+  const DEFAULT_VOLUME = 0.7;
 
   const [currentTime, setCurrentTime] = useState(0);
   const [isCurrentTime, setIsCurrentTime] = useState(true);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [duration, setDuration] = useState(1);
+  const [volume, setVolume] = useState(0.7);
   const [isPlay, setIsPlay] = useState(false);
   const [thumbnails, setThumbnails] = useState([]);
   const [hoverInfo, setHoverInfo] = useState({
@@ -44,7 +48,7 @@ export default function VideoPlayer({ src, poster, timeline }) {
     left: 0,
     translateX: 0,
   });
-  const [lastVolume, setLastVolume] = useState(1);
+  // const [lastVolume, setLastVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [qualities, setQualities] = useState([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
@@ -63,20 +67,6 @@ export default function VideoPlayer({ src, poster, timeline }) {
   const isSafari =
     typeof window !== "undefined" &&
     /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-  const playSafe = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    try {
-      await video.play();
-    } catch (err) {
-      // AbortError is normal — ignore it
-      if (err.name !== "AbortError") {
-        console.error("Play failed:", err);
-      }
-    }
-  };
 
   const parseTime = (timeStr) => {
     const parts = timeStr.split(":");
@@ -324,12 +314,201 @@ export default function VideoPlayer({ src, poster, timeline }) {
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  function stepFrame(video, dir) {
+    video.pause();
+    const fps = 30;
+    video.currentTime = Math.max(0, video.currentTime + (1 / fps) * dir);
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  function togglePiP() {
+    if (videoRef.current === null) return;
+    if (videoRef.current !== null && videoRef.current.requestPictureInPicture) {
+      videoRef.current.requestPictureInPicture();
+    }
+  }
+
+  const toggleMuted = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.volume === 0) {
+      // 🔊 Unmute
+      video.volume = lastVolumeRef.current || 1;
+      showVolumeToast(video.volume);
+    } else {
+      // 🔇 Mute
+      lastVolumeRef.current = video.volume;
+      video.volume = 0;
+      showVolumeToast(0);
+    }
+  };
+
+  function onToggleTheatreMode() {
+    if (!cinemaModeRef.current) {
+      cinemaModeRef.current = true;
+      setCinemaMode(true);
+    } else {
+      cinemaModeRef.current = false;
+      setCinemaMode(false);
+    }
+  }
+
+  const volumeTimeoutRef = useRef(null);
+  const [showVolumeUI, setShowVolumeUI] = useState(false);
+
+  const showVolumeToast = (v) => {
+    setShowVolumeUI(true);
+
+    clearTimeout(volumeTimeoutRef.current);
+    volumeTimeoutRef.current = setTimeout(() => {
+      setShowVolumeUI(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      const target = e.target;
+
+      // ⛔ Ignore typing
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const video = videoRef?.current;
+      if (!video) return;
+
+      switch (e.code) {
+        case "Space":
+        case "KeyK":
+          e.preventDefault();
+          handlePlayPause();
+          break;
+
+        case "KeyJ":
+        case "ArrowLeft":
+          video.currentTime = Math.max(0, video.currentTime - 10);
+          break;
+
+        case "KeyL":
+        case "ArrowRight":
+          video.currentTime = Math.min(
+            video.duration - 1,
+            video.currentTime + 10,
+          );
+          break;
+
+        case "ArrowUp": {
+          e.preventDefault();
+
+          const newVolume = Math.min(1, video.volume + 0.05);
+          video.volume = newVolume;
+          setVolume(newVolume);
+
+          volumeRef.current.value = newVolume * 100;
+          showVolumeToast(newVolume);
+          break;
+        }
+
+        case "ArrowDown": {
+          e.preventDefault();
+
+          const newVolume = Math.max(0, videoRef.current.volume - 0.05);
+          videoRef.current.volume = newVolume;
+          setVolume(newVolume);
+
+          volumeRef.current.value = newVolume * 100;
+          showVolumeToast(newVolume);
+          break;
+        }
+
+        case "KeyM":
+          toggleMuted();
+          break;
+
+        case "KeyF":
+          toggleFullscreen(containerRef?.current || video);
+          break;
+
+        case "KeyI":
+          togglePiP();
+          break;
+
+        case "KeyC":
+          onToggleCaptions?.();
+          break;
+
+        case "KeyT":
+          onToggleTheatreMode?.();
+          break;
+
+        case "Period":
+          if (e.shiftKey) {
+            video.playbackRate = Math.min(3, video.playbackRate + 0.25);
+          } else {
+            stepFrame(video, 1);
+          }
+          break;
+
+        case "Comma":
+          if (e.shiftKey) {
+            video.playbackRate = Math.max(0.25, video.playbackRate - 0.25);
+          } else {
+            stepFrame(video, -1);
+          }
+          break;
+
+        case "Digit0":
+        case "Digit1":
+        case "Digit2":
+        case "Digit3":
+        case "Digit4":
+        case "Digit5":
+        case "Digit6":
+        case "Digit7":
+        case "Digit8":
+        case "Digit9": {
+          const percent = Number(e.code.replace("Digit", "")) * 10;
+          video.currentTime = (video.duration * percent) / 100;
+          break;
+        }
+
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
-    <div className="">
+    <div className="select-none focus:outline-none">
       <div
-        className={`relative  rounded-xl mx-auto group ${cinemaMode ? "w-full h-[73vh] bg-black" : " w-[60vw] h-full"} `}
+        className={`relative  rounded-xl mx-auto group ${cinemaMode ? "w-full h-[73vh] bg-black" : " w-[60vw] h-full"} select-none focus:outline-none bg-black `}
         ref={containerRef}
       >
+        {showVolumeUI && (
+          <div className="absolute top-6 left-[50%] -translate-x-1/2 z-20 flex items-center justify-center pointer-events-none">
+            <div
+              className="bg-black/60 px-4 py-2 rounded-md text-white text-lg 
+                    transition-opacity duration-150 ease-out"
+            >
+              {Math.round(volume * 100)}%
+            </div>
+          </div>
+        )}
         <button
           onClick={() => {
             handlePlayPause();
@@ -338,10 +517,10 @@ export default function VideoPlayer({ src, poster, timeline }) {
             setIsSpeedOpen(false);
             setIsSleepTimerOpen(false);
           }}
-          className="absolute z-10 flex items-center justify-center inset-0 "
+          className="absolute z-10 flex items-center justify-center inset-0 select-none focus:outline-none"
         >
           <div
-            className={`bg-black/30 p-3 rounded-full transition-all duration-300 ease-out cursor-pointer ${isPlay ? "opacity-0 scale-90 pointer-events-none " : "opacity-100 scale-100"}`}
+            className={`bg-black/30 p-3 rounded-full transition-all select-none duration-300 ease-out cursor-pointer ${isPlay ? "opacity-0 scale-90 pointer-events-none " : "opacity-100 scale-100"} focus:outline-none`}
           >
             <Play className="size-10 text-white fill-white " />
           </div>
@@ -349,28 +528,40 @@ export default function VideoPlayer({ src, poster, timeline }) {
 
         <video
           ref={videoRef}
-          // controls
           playsInline
           preload="auto"
           poster={poster}
-          onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+          onLoadedMetadata={() => {
+            const video = videoRef.current;
+            if (!video) return;
+
+            video.volume = DEFAULT_VOLUME;
+            video.muted = DEFAULT_VOLUME === 0;
+
+            setDuration(video.duration);
+            setVolume(DEFAULT_VOLUME);
+          }}
           onTimeUpdate={() => {
-            const cur = videoRef.current.currentTime;
+            const video = videoRef.current;
+            if (!video) return;
+
+            const cur = videoRef.current.currentTime;            
             setCurrentTime(cur);
+
             if (duration > 0) {
               setProgress((cur / duration) * 100);
             }
           }}
           onVolumeChange={() => setVolume(videoRef.current.volume)}
-          className="w-full h-full rounded-lg  "
+          className="w-full h-full rounded-lg select-none "
         />
 
         <div
           className="absolute bottom-0 w-full flex flex-col px-3 pb-2 z-20 gap-1.5 
-          opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out 
+          opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out  select-none focus:outline-none
         "
         >
-          <div className="relative">
+          <div className="relative select-none focus:outline-none">
             {/* hover thumbnail */}
             {!isSettingsOpen && hoverInfo.show && (
               <div
@@ -423,25 +614,27 @@ export default function VideoPlayer({ src, poster, timeline }) {
                 onMouseLeave={() =>
                   setHoverInfo((prev) => ({ ...prev, show: false }))
                 }
-                className="
+                className={`
                       relative w-full cursor-pointer
                       h-1 group-hover/progress:h-2
                       bg-neutral-500 rounded-lg appearance-none
-                      bg-no-repeat bg-linear-to-r from-red-600 to-red-600
+                      bg-no-repeat
                       transition-[height] duration-150
                       [&::-webkit-slider-thumb]:appearance-none
                       [&::-webkit-slider-thumb]:w-5
                       [&::-webkit-slider-thumb]:h-5
                       [&::-webkit-slider-thumb]:bg-transparent
-                    "
+                    `}
                 style={{
                   backgroundSize: `${progress}% 100%`,
+                  backgroundImage: `linear-gradient(to right, ${colorScheme}, ${colorScheme})`,
                 }}
               />
               <div
-                className="absolute top-1/2 w-3 h-3 z-30 bg-red-600 rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2  pointer-events-none group-hover/progress:scale-[150%]  group-hover/progress:shadow-md   transition-transform duration-150"
+                className={`absolute top-1/2 w-3 h-3 z-30  rounded-full cursor-pointer -translate-x-1/2 -translate-y-1/2  pointer-events-none group-hover/progress:scale-[150%]  group-hover/progress:shadow-md   transition-transform duration-150`}
                 style={{
                   left: ` ${progress}%`,
+                  backgroundColor: colorScheme,
                 }}
               />
             </label>
@@ -451,10 +644,18 @@ export default function VideoPlayer({ src, poster, timeline }) {
             <div className=" z-20 w-fit flex items-center gap-5 ">
               {/* play/pause button */}
               <button
-                className=" bg-black/30 text-white py-1.5 px-1.5 rounded-full w-fit flex items-center  hover:bg-neutral-600/40 font-medium text-[15px] outline-4 outline-[#0000004D] transition-all duration-150 ease-out cursor-pointer"
+                className=" bg-black/30 text-white py-1.5 px-1.5 rounded-full w-fit flex items-center  hover:bg-neutral-600/40 font-medium text-[15px] outline-4 outline-[#0000004D] transition-all duration-150 ease-out cursor-pointer group/playpause select-none"
                 onClick={handlePlayPause}
               >
-                {isPlay ? (
+                <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 -left-1 font-bold group-hover/playpause:visible invisible transition-all duration-150 ease-out text-nowrap hover:select-none">
+                  {isPlay <= 0 ? "Play" : "Pause"}{" "}
+                  <span className="outline-neutral-400 outline px-0.75 py-px rounded-sm font-bold ">
+                    K
+                  </span>
+                </p>
+                {duration > 0 && currentTime >= duration - 0.2 ? (
+                  <RotateCcw />
+                ) : isPlay ? (
                   <Pause className="fill-white" />
                 ) : (
                   <Play className="fill-white" />
@@ -462,13 +663,15 @@ export default function VideoPlayer({ src, poster, timeline }) {
               </button>
 
               {/* volume  */}
-              <div className=" w-fit flex items-center  bg-black/30 py-1.5 px-1.5 rounded-full text-white hover:bg-neutral-600/40 font-medium text-[15px] outline-4 outline-[#0000004D]  transition-all duration-150 ease-out cursor-pointer select-none group/volume">
-                <button
-                  onClick={() => {
-                    setLastVolume(videoRef.current.volume);
-                    videoRef.current.volume = volume <= 0 ? lastVolume : 0;
-                  }}
-                >
+              <div className="relative w-fit flex items-center  bg-black/30 py-1.5 px-1.5 rounded-full text-white hover:bg-neutral-600/40 font-medium text-[15px] outline-4 outline-[#0000004D]  transition-all duration-150 ease-out cursor-pointer select-none group/volume">
+                <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 -left-3 font-bold group-hover/volume:visible invisible transition-all duration-150 ease-out text-nowrap">
+                  {volume <= 0 ? "Unmute" : "Mute"}{" "}
+                  <span className="outline-neutral-400 outline px-0.75 py-px rounded-sm font-bold ">
+                    M
+                  </span>
+                </p>
+
+                <button onClick={() => toggleMuted()}>
                   {volume <= 0 ? (
                     <VolumeX
                       className={`transition-all duration-200 ease-out ${volume <= 0 ? "opacity-100 scale-100" : "opacity-0 scale-80"}`}
@@ -494,7 +697,6 @@ export default function VideoPlayer({ src, poster, timeline }) {
                     const val = e.target.value;
                     setVolume(val / 100);
                     videoRef.current.volume = val / 100;
-                    console.log(val / 100);
                   }}
                   className="w-0 h-0.5  accent-amber-50 appearance-none [&::-webkit-slider-thumb]:cursor-pointer  bg-no-repeat bg-linear-to-r from-white to-white
                    bg-neutral-300/30 group-hover/volume:w-15 group-hover/volume:ml-1.5  group-hover/volume:mr-1 [&::-webkit-slider-thumb]:appearance-none group-hover/volume:[&::-webkit-slider-thumb]:appearance-auto
@@ -506,7 +708,6 @@ export default function VideoPlayer({ src, poster, timeline }) {
               </div>
 
               {/* time range */}
-
               <button
                 className=" w-fit flex items-center gap-1 bg-black/30 py-1.5 px-4 rounded-full text-white hover:bg-neutral-600/40 font-medium text-[15px] outline-4 outline-[#0000004D] transition-all duration-150 ease-out cursor-pointer select-none"
                 onClick={() => setIsCurrentTime(!isCurrentTime)}
@@ -549,14 +750,14 @@ export default function VideoPlayer({ src, poster, timeline }) {
 
             <div className="relative z-20 w-fit flex items-center bg-black/30  rounded-full text-white  font-medium text-[15px] outline-4 outline-[#0000004D]  cursor-pointer select-none">
               {/* subtitles */}
-              <button
+              {/* <button
                 className="c py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out "
                 onClick={() => setIsSubtitlesOpen(!isSubtitlesOpen)}
               >
                 <Captions
                   className={`${isSubtitlesOpen ? "text-white" : "text-white/50"} transition-all duration-150 ease-out`}
                 />
-              </button>
+              </button> */}
 
               {/* settings */}
               <button
@@ -577,8 +778,14 @@ export default function VideoPlayer({ src, poster, timeline }) {
               {!isFullscreen && (
                 <button
                   onClick={() => setCinemaMode(!cinemaMode)}
-                  className="hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out "
+                  className="relative hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out group/cinma select-none cursor-pointer"
                 >
+                  <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 -right-7 font-bold group-hover/cinma:visible invisible transition-all duration-150 ease-out text-nowrap">
+                    {cinemaMode <= 0 ? "Cinema mode" : "Exit Cinema mode"}{" "}
+                    <span className="outline-neutral-400 outline px-0.75 py-px rounded-sm font-bold ">
+                      T
+                    </span>
+                  </p>
                   {cinemaMode ? (
                     <svg fill="none" height="24" viewBox="0 0 24 24" width="24">
                       <path
@@ -599,25 +806,29 @@ export default function VideoPlayer({ src, poster, timeline }) {
 
               {/* picture in picture */}
               <button
-                onClick={() => {
-                  videoRef.current.requestPictureInPicture();
-                }}
-                className="hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out "
+                onClick={() => togglePiP()}
+                className="relative hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out group/pip select-none cursor-pointer "
               >
+                <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 -right-10 font-bold group-hover/pip:visible invisible transition-all duration-150 ease-out text-nowrap">
+                  Picture in Picture{" "}
+                  <span className="outline-neutral-400 outline px-0.75 py-px rounded-sm font-bold ">
+                    I
+                  </span>
+                </p>
                 <PictureInPicture />
               </button>
 
               {/* fullscreen */}
               <button
-                onClick={() => {
-                  if (!document.fullscreenElement) {
-                    containerRef.current.requestFullscreen();
-                  } else {
-                    document.exitFullscreen();
-                  }
-                }}
-                className="hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out"
+                onClick={() => toggleFullscreen()}
+                className="relative hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out group/fullscreen select-none cursor-pointer "
               >
+                <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 right-0 font-bold group-hover/fullscreen:visible invisible transition-all duration-150 ease-out text-nowrap">
+                  {isFullscreen <= 0 ? "Full Screen" : "Exit Full Screen"}{" "}
+                  <span className="outline-neutral-400 outline px-0.75 py-px rounded-sm font-bold ">
+                    F
+                  </span>
+                </p>
                 {isFullscreen ? (
                   <Minimize2 className=" rotate-90" />
                 ) : (
@@ -627,196 +838,224 @@ export default function VideoPlayer({ src, poster, timeline }) {
             </div>
           </div>
 
-          {isSettingsOpen && (
-            <div className="absolute bottom-16 right-2 flex flex-col items-center  bg-black/50 rounded-lg p-2 w-70 font-medium text-sm  ">
+          {/* settings menu */}
+          <div
+            className={`absolute bottom-16 right-2 flex flex-col items-center bg-black/50 rounded-lg p-2 font-medium text-sm transition-all duration-150 ease-out origin-bottom-right ${
+              isSettingsOpen
+                ? "w-70 opacity-100 pointer-events-auto"
+                : "w-65 opacity-0 pointer-events-none"
+            } `}
+          >
+            <button
+              className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
+              onClick={() => {
+                setIsSleepTimerOpen(!isSleepTimerOpen);
+                setIsSettingsOpen(!isSettingsOpen);
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <MoonStar className="size-5" />
+                <p className="text-neutral-300">Sleep timer</p>
+              </div>
+              <div className="flex items-center gap-1 text-neutral-400">
+                <p className="">
+                  {sleepTime === 0 ? "Off" : `${sleepTime} min`}
+                </p>
+                <ChevronRight className="size-4.5" />
+              </div>
+            </button>
+            <button
+              className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
+              onClick={() => {
+                setIsSpeedOpen(!isSpeedOpen);
+                setIsSettingsOpen(!isSettingsOpen);
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <CircleGauge className="size-5" />
+                <p className="text-neutral-300">Playback speed</p>
+              </div>
+              <div className="flex items-center gap-1 text-neutral-400">
+                <p className="">{currentSpeed}x</p>
+                <ChevronRight className="size-4.5" />
+              </div>
+            </button>
+            <button
+              className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
+              onClick={() => {
+                setIsQualityOpen(!isQualityOpen);
+                setIsSettingsOpen(!isSettingsOpen);
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <Settings2 className="size-5" />
+                <p className="text-neutral-300">Quality</p>
+              </div>
+              <div className="flex items-center gap-1 text-neutral-400">
+                <p className="">
+                  {currentQuality === -1
+                    ? "Auto"
+                    : currentQuality === 0
+                      ? "360p"
+                      : currentQuality === 1
+                        ? "480p"
+                        : currentQuality === 2
+                          ? "720p"
+                          : currentQuality === 3
+                            ? "1080p"
+                            : currentQuality === 4 && "1080p Premium"}
+                </p>
+                <ChevronRight className="size-4.5" />
+              </div>
+            </button>
+          </div>
+
+          {/* quality menu */}
+          <div
+            className={`absolute bottom-16 right-2 flex flex-col items-center  bg-black/50 rounded-lg py-2 font-medium text-sm transition-all duration-150 ease-out origin-bottom-right ${
+              isQualityOpen
+                ? "w-50 opacity-100 pointer-events-auto"
+                : "w-40 opacity-0 pointer-events-none"
+            } `}
+          >
+            <div className="w-full pt-2 pb-4 border-b border-white/20  px-2 transition-all duration-150 ease-out">
               <button
-                className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
-                onClick={() => {
-                  setIsSleepTimerOpen(!isSleepTimerOpen);
-                  setIsSettingsOpen(!isSettingsOpen);
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <MoonStar className="size-5" />
-                  <p className="text-neutral-300">Sleep timer</p>
-                </div>
-                <div className="flex items-center gap-1 text-neutral-400">
-                  <p className="">
-                    {sleepTime === 0 ? "Off" : `${sleepTime} min`}
-                  </p>
-                  <ChevronRight className="size-4.5" />
-                </div>
-              </button>
-              <button
-                className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
-                onClick={() => {
-                  setIsSpeedOpen(!isSpeedOpen);
-                  setIsSettingsOpen(!isSettingsOpen);
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <CircleGauge className="size-5" />
-                  <p className="text-neutral-300">Playback speed</p>
-                </div>
-                <div className="flex items-center gap-1 text-neutral-400">
-                  <p className="">Normal</p>
-                  <ChevronRight className="size-4.5" />
-                </div>
-              </button>
-              <button
-                className="flex items-center justify-between gap-2 w-full hover:bg-neutral-400/20.5 py-3 px-1.5 rounded-lg transition-all duration-150 ease-out"
                 onClick={() => {
                   setIsQualityOpen(!isQualityOpen);
                   setIsSettingsOpen(!isSettingsOpen);
                 }}
+                className="flex items-center gap-2 cursor-pointer"
               >
-                <div className="flex items-center gap-4">
-                  <Settings2 className="size-5" />
-                  <p className="text-neutral-300">Quality</p>
-                </div>
-                <div className="flex items-center gap-1 text-neutral-400">
-                  <p className="">Auto</p>
-                  <ChevronRight className="size-4.5" />
-                </div>
+                <ChevronLeft className="size-5 text-white " />
+                <p>Quality</p>
               </button>
             </div>
-          )}
+            <div className="w-full flex  flex-col p-2 ">
+              {qualities.map((level, index) => {
+                const isPremium = level.bitrate.toString() === "8231300";
+                const isActive =
+                  currentQuality === qualities.length - 1 - index;
 
-          {isQualityOpen && (
-            <div className="absolute bottom-16 right-2 flex flex-col items-center  bg-black/50 rounded-lg py-2 w-50 font-medium text-sm transition-all duration-150 ease-out  ">
-              <div className="w-full pt-2 pb-4 border-b border-white/20  px-2 transition-all duration-150 ease-out">
-                <button
-                  onClick={() => {
-                    setIsQualityOpen(!isQualityOpen);
-                    setIsSettingsOpen(!isSettingsOpen);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <ChevronLeft className="size-5 text-white " />
-                  <p>Quality</p>
-                </button>
-              </div>
-              <div className="w-full flex  flex-col p-2 ">
-                {qualities.map((level, index) => {
-                  const isPremium = level.bitrate.toString() === "8231300";
-                  const isActive =
-                    currentQuality === qualities.length - 1 - index;
-
-                  return (
-                    <button
-                      key={index}
-                      disabled={isSafari || !manifestReady || !mediaAttached}
-                      onClick={() =>
-                        handleQualityChange(qualities.length - 1 - index)
-                      }
-                      className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out
+                return (
+                  <button
+                    key={index}
+                    disabled={isSafari || !manifestReady || !mediaAttached}
+                    onClick={() =>
+                      handleQualityChange(qualities.length - 1 - index)
+                    }
+                    className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out
                         ${isActive ? "bg-neutral-400/30" : "hover:bg-neutral-400/20"}
                         disabled:opacity-40 disabled:pointer-events-none
                       `}
-                    >
-                      {level.height}p
-                      {isPremium && (
-                        <>
-                          <br />
-                          <span className="text-xs text-neutral-400">
-                            Premium Bitrate
-                          </span>
-                        </>
-                      )}
-                    </button>
-                  );
-                })}
-                <button
-                  disabled={isSafari || !manifestReady || !mediaAttached}
-                  onClick={() => handleQualityChange(-1)}
-                  className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out
+                  >
+                    {level.height}p
+                    {isPremium && (
+                      <>
+                        <br />
+                        <span className="text-xs text-neutral-400">
+                          Premium Bitrate
+                        </span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                disabled={isSafari || !manifestReady || !mediaAttached}
+                onClick={() => handleQualityChange(-1)}
+                className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out
                       ${currentQuality === -1 ? "bg-neutral-400/30" : "hover:bg-neutral-400/20"}
                       disabled:opacity-40 disabled:pointer-events-none
                     `}
-                >
-                  Auto
-                </button>
-              </div>
+              >
+                Auto
+              </button>
             </div>
-          )}
+          </div>
 
-          {isSpeedOpen && (
-            <div
-              className="absolute bottom-16 right-2 flex flex-col items-center h-70  bg-black/50 rounded-lg py-2 w-50 font-medium text-sm transition-all duration-150 ease-out overflow-y-auto overflow-x-hidden 
-             [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]  "
-            >
-              <div className="w-full pt-2 pb-4 border-b border-white/20 px-2 transition-all duration-150 ease-out">
-                <button
-                  onClick={() => {
-                    setIsSpeedOpen(false);
-                    setIsSettingsOpen(true);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <ChevronLeft className="size-5 text-white" />
-                  <p>Playback Speed</p>
-                </button>
-              </div>
-
-              <div className="w-full flex flex-col p-2">
-                {[0.25, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3].map(
-                  (speed, index) => {
-                    const isActive = currentSpeed === speed;
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setCurrentSpeed(speed);
-                          videoRef.current.playbackRate = speed;
-                        }}
-                        className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out ${isActive ? "bg-neutral-400/30" : "hover:bg-neutral-400/20"} `}
-                      >
-                        {speed}x
-                      </button>
-                    );
-                  },
-                )}
-              </div>
+          {/* playback speed menu */}
+          <div
+            className={`absolute bottom-16 right-2 flex flex-col items-center h-70  bg-black/50 rounded-lg py-2 font-medium text-sm transition-all duration-150 ease-out overflow-y-auto overflow-x-hidden 
+             [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]  origin-bottom-right ${
+               isSpeedOpen
+                 ? "w-50 opacity-100 pointer-events-auto"
+                 : "w-40 opacity-0 pointer-events-none"
+             } `}
+          >
+            <div className="w-full pt-2 pb-4 border-b border-white/20 px-2 transition-all duration-150 ease-out">
+              <button
+                onClick={() => {
+                  setIsSpeedOpen(false);
+                  setIsSettingsOpen(true);
+                }}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <ChevronLeft className="size-5 text-white" />
+                <p>Playback Speed</p>
+              </button>
             </div>
-          )}
 
-          {isSleepTimerOpen && (
-            <div
-              className="absolute bottom-16 right-2 flex flex-col items-center h-70  bg-black/50 rounded-lg py-2 w-50 font-medium text-sm transition-all duration-150 ease-out overflow-y-auto overflow-x-hidden 
-             [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]  "
-            >
-              <div className="w-full pt-2 pb-4 border-b border-white/20 px-2 transition-all duration-150 ease-out">
-                <button
-                  onClick={() => {
-                    setIsSleepTimerOpen(false);
-                    setIsSettingsOpen(true);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <ChevronLeft className="size-5 text-white" />
-                  <p>Sleep Timer</p>
-                </button>
-              </div>
-              <div className="w-full flex flex-col p-2">
-                {[0, 1, 5, 10, 15, 20, 25, 30].map((time, index) => {
-                  const isActive = sleepTime === time;
+            <div className="w-full flex flex-col p-2">
+              {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3].map(
+                (speed, index) => {
+                  const isActive = currentSpeed === speed;
 
                   return (
                     <button
                       key={index}
                       onClick={() => {
-                        handleSleepTimeChange(isActive ? 0 : time);
+                        setCurrentSpeed(speed);
+                        videoRef.current.playbackRate = speed;
                       }}
                       className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out ${isActive ? "bg-neutral-400/30" : "hover:bg-neutral-400/20"} `}
                     >
-                      {time === 0 ? "Off" : `${time} min`}
+                      {speed}x
                     </button>
                   );
-                })}
-              </div>
+                },
+              )}
             </div>
-          )}
+          </div>
+
+          {/* sleep timer menu */}
+          <div
+            className={`absolute bottom-16 right-2 flex flex-col items-center h-70 bg-black/50 rounded-lg py-2 font-medium text-sm transition-all duration-150 ease-out overflow-y-auto overflow-x-hidden 
+             [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent] ${
+               isSleepTimerOpen
+                 ? "w-50 opacity-100 pointer-events-auto"
+                 : "w-40 opacity-0 pointer-events-none"
+             } `}
+          >
+            <div className="w-full pt-2 pb-4 border-b border-white/20 px-2 transition-all duration-150 ease-out">
+              <button
+                onClick={() => {
+                  setIsSleepTimerOpen(false);
+                  setIsSettingsOpen(true);
+                }}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <ChevronLeft className="size-5 text-white" />
+                <p>Sleep Timer</p>
+              </button>
+            </div>
+            <div className="w-full flex flex-col p-2">
+              {[0, 1, 5, 10, 15, 20, 25, 30].map((time, index) => {
+                const isActive = sleepTime === time;
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      handleSleepTimeChange(isActive ? 0 : time);
+                    }}
+                    className={`w-full text-left px-6 py-2 rounded-lg transition-all duration-150 ease-out ${isActive ? "bg-neutral-400/30" : "hover:bg-neutral-400/20"} `}
+                  >
+                    {time === 0 ? "Off" : `${time} min`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -830,49 +1069,4 @@ export default function VideoPlayer({ src, poster, timeline }) {
           srcLang="en"
           default
         /> */
-}
-
-{
-  /* <button
-        className="bg-blue-500 text-white p-2 rounded-md"
-        onClick={() => (videoRef.current.currentTime = 0)}
-      >
-        Reset
-      </button>
-      <button
-        className="bg-blue-500 text-white p-2 rounded-md"
-        onClick={() => (videoRef.current.currentTime = duration - 2)}
-      >
-        seek
-      </button> */
-}
-
-// volume svg /
-{
-  /* <svg height="24" viewBox="0 0 24 24" width="24">
-                      <path
-                        class="ytp-svg-fill ytp-svg-volume-animation-speaker"
-                        d="M 11.60 2.08 L 11.48 2.14 L 3.91 6.68 C 3.02 7.21 2.28 7.97 1.77 8.87 C 1.26 9.77 1.00 10.79 1 11.83 V 12.16 L 1.01 12.56 C 1.07 13.52 1.37 14.46 1.87 15.29 C 2.38 16.12 3.08 16.81 3.91 17.31 L 11.48 21.85 C 11.63 21.94 11.80 21.99 11.98 21.99 C 12.16 22.00 12.33 21.95 12.49 21.87 C 12.64 21.78 12.77 21.65 12.86 21.50 C 12.95 21.35 13 21.17 13 21 V 3 C 12.99 2.83 12.95 2.67 12.87 2.52 C 12.80 2.37 12.68 2.25 12.54 2.16 C 12.41 2.07 12.25 2.01 12.08 2.00 C 11.92 1.98 11.75 2.01 11.60 2.08 Z"
-                        fill="#fff"
-                      ></path>
-                      <path
-                        class="ytp-svg-volume-animation-small-ripple"
-                        d=" M 15.53 7.05 C 15.35 7.22 15.25 7.45 15.24 7.70 C 15.23 7.95 15.31 8.19 15.46 8.38 L 15.53 8.46 L 15.70 8.64 C 16.09 9.06 16.39 9.55 16.61 10.08 L 16.70 10.31 C 16.90 10.85 17 11.42 17 12 L 16.99 12.24 C 16.96 12.73 16.87 13.22 16.70 13.68 L 16.61 13.91 C 16.36 14.51 15.99 15.07 15.53 15.53 C 15.35 15.72 15.25 15.97 15.26 16.23 C 15.26 16.49 15.37 16.74 15.55 16.92 C 15.73 17.11 15.98 17.21 16.24 17.22 C 16.50 17.22 16.76 17.12 16.95 16.95 C 17.6 16.29 18.11 15.52 18.46 14.67 L 18.59 14.35 C 18.82 13.71 18.95 13.03 18.99 12.34 L 19 12 C 18.99 11.19 18.86 10.39 18.59 9.64 L 18.46 9.32 C 18.15 8.57 17.72 7.89 17.18 7.3 L 16.95 7.05 L 16.87 6.98 C 16.68 6.82 16.43 6.74 16.19 6.75 C 15.94 6.77 15.71 6.87 15.53 7.05"
-                        fill="#fff"
-                        transform="translate(18, 12) scale(1) translate(-18,-12)"
-                      ></path>
-                      <path
-                        class="ytp-svg-volume-animation-big-ripple"
-                        d="M18.36 4.22C18.18 4.39 18.08 4.62 18.07 4.87C18.05 5.12 18.13 5.36 18.29 5.56L18.36 5.63L18.66 5.95C19.36 6.72 19.91 7.60 20.31 8.55L20.47 8.96C20.82 9.94 21 10.96 21 11.99L20.98 12.44C20.94 13.32 20.77 14.19 20.47 15.03L20.31 15.44C19.86 16.53 19.19 17.52 18.36 18.36C18.17 18.55 18.07 18.80 18.07 19.07C18.07 19.33 18.17 19.59 18.36 19.77C18.55 19.96 18.80 20.07 19.07 20.07C19.33 20.07 19.59 19.96 19.77 19.77C20.79 18.75 21.61 17.54 22.16 16.20L22.35 15.70C22.72 14.68 22.93 13.62 22.98 12.54L23 12C22.99 10.73 22.78 9.48 22.35 8.29L22.16 7.79C21.67 6.62 20.99 5.54 20.15 4.61L19.77 4.22L19.70 4.15C19.51 3.99 19.26 3.91 19.02 3.93C18.77 3.94 18.53 4.04 18.36 4.22 Z"
-                        fill="#fff"
-                        transform="translate(22, 12) scale(1) translate(-22, -12)"
-                      ></path>
-                    </svg>
-
-                    <svg height="24" viewBox="0 0 24 24" width="24">
-                      <path
-                        d="M11.60 2.08L11.48 2.14L3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87C1.26 9.77 1.00 10.79 1 11.83V12.16L1.01 12.56C1.07 13.52 1.37 14.46 1.87 15.29C2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.80 21.99 11.98 21.99C12.16 22.00 12.33 21.95 12.49 21.87C12.64 21.78 12.77 21.65 12.86 21.50C12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52C12.80 2.37 12.68 2.25 12.54 2.16C12.41 2.07 12.25 2.01 12.08 2.00C11.92 1.98 11.75 2.01 11.60 2.08ZM4.94 8.4V8.40L11 4.76V19.23L4.94 15.6C4.38 15.26 3.92 14.80 3.58 14.25C3.24 13.70 3.05 13.07 3.00 12.43L3 12.17V11.83C2.99 11.14 3.17 10.46 3.51 9.86C3.85 9.25 4.34 8.75 4.94 8.4ZM21.29 8.29L19 10.58L16.70 8.29L16.63 8.22C16.43 8.07 16.19 7.99 15.95 8.00C15.70 8.01 15.47 8.12 15.29 8.29C15.12 8.47 15.01 8.70 15.00 8.95C14.99 9.19 15.07 9.43 15.22 9.63L15.29 9.70L17.58 12L15.29 14.29C15.19 14.38 15.12 14.49 15.06 14.61C15.01 14.73 14.98 14.87 14.98 15.00C14.98 15.13 15.01 15.26 15.06 15.39C15.11 15.51 15.18 15.62 15.28 15.71C15.37 15.81 15.48 15.88 15.60 15.93C15.73 15.98 15.86 16.01 15.99 16.01C16.12 16.01 16.26 15.98 16.38 15.93C16.50 15.87 16.61 15.80 16.70 15.70L19 13.41L21.29 15.70L21.36 15.77C21.56 15.93 21.80 16.01 22.05 15.99C22.29 15.98 22.53 15.88 22.70 15.70C22.88 15.53 22.98 15.29 22.99 15.05C23.00 14.80 22.93 14.56 22.77 14.36L22.70 14.29L20.41 12L22.70 9.70C22.80 9.61 22.87 9.50 22.93 9.38C22.98 9.26 23.01 9.12 23.01 8.99C23.01 8.86 22.98 8.73 22.93 8.60C22.88 8.48 22.81 8.37 22.71 8.28C22.62 8.18 22.51 8.11 22.39 8.06C22.26 8.01 22.13 7.98 22.00 7.98C21.87 7.98 21.73 8.01 21.61 8.06C21.49 8.12 21.38 8.19 21.29 8.29Z"
-                        fill="white"
-                      ></path>
-                    </svg> */
 }
