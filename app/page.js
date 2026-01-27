@@ -1,6 +1,6 @@
 "use client";
 
-import FusionPlayer from "@/components/fusion-player";
+import FusionPlayer from "@/components/ui/fusion-player";
 import { useState } from "react";
 
 export default function Home() {

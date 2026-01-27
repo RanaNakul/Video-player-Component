@@ -1,11 +1,11 @@
 {
-  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "fusion-player",
-  "homepage": "https://fusionplayer.vercel.app",
+  "type": "registry:ui",
   "dependencies": ["hls.js", "lucide-react"],
   "files": [
     {
-      "path": "components/fusion-player.jsx",
+      "path": "components/ui/fusion-player.jsx",
       "type": "registry:ui",
       "target": "components/ui/fusion-player.jsx"
     }
