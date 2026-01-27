@@ -1,21 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "fusion-player",
   "homepage": "https://fusionplayer.vercel.app",
-  "items": [
+  "dependencies": ["hls.js", "lucide-react"],
+  "files": [
     {
-      "name": "fusion-player",
-      "type": "registry:component",
-      "dependencies": [
-        "hls.js",
-        "lucide-react"
-      ],
-      "files": [
-        {
-          "path": "https://raw.githubusercontent.com/RanaNakul/Video-player-Component/main/components/fusion-player.jsx",
-          "type": "registry:ui",
-          "target": "components/ui/fusion-player.jsx"
-        }
-      ]
+      "path": "components/fusion-player.jsx",
+      "type": "registry:ui",
+      "target": "components/ui/fusion-player.jsx"
     }
   ]
 }
