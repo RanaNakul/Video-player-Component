@@ -3,6 +3,7 @@
   "name": "fusion-player",
   "homepage": "https://fusionplayer.vercel.app",
   "type": "registry:component",
+  "dependencies": ["hls.js", "lucide-react"],
   "files": [
     {
       "path": "https://raw.githubusercontent.com/RanaNakul/Video-player-Component/main/components/fusion-player.jsx",
