@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Video Player",
-  description: "Video Player with Next.js",
+  title: "Fusion Player Demo",
+  description: "A demo application for Fusion Player using Next.js",
 };
 
 export default function RootLayout({ children }) {

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "fusion-player",
+  "type": "components",
+  "files": [
+    {
+      "path": "components/fusion-player.jsx",
+      "type": "component",
+      "target": "components/ui/fusion-player.jsx"
+    }
+  ]
+}

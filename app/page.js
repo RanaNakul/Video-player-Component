@@ -1,29 +1,28 @@
 "use client";
 
-import VideoPlayer from "@/components/VideoPlayer";
+import FusionPlayer from "@/components/fusion-player";
 import { useState } from "react";
 
 export default function Home() {
   const [colorScheme, setColorScheme] = useState("#001959");
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6 ">
-      <div className="w-full">
-        <VideoPlayer
-          src="https://stream.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A.m3u8"
-          poster="https://image.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A/thumbnail.png"
-          timeline="https://image.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A/storyboard.vtt"
-          colorScheme={colorScheme}
-        />
 
-        <div className="mt-6 flex flex-col items-center">
-          <input
-            type="color"
-            value={colorScheme}
-            onChange={(e) => setColorScheme(e.target.value)}
-            className="w-10 h-10 mt-4 outline-none border-none rounded-full cursor-pointer appearance-none                                                                                         "
-          
-          />
-        </div>
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-neutral-900 text-white">
+      <FusionPlayer
+        src="https://stream.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A.m3u8"
+        poster="https://image.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A/thumbnail.png"
+        timeline="https://image.mux.com/01hdbfS3rAKVqWdh4n5jXcPJxT00q4hguWDxhRVMcFs7A/storyboard.vtt"
+        colorScheme={colorScheme}
+      />
+
+      <div className="flex items-center gap-4">
+        <label className="text-sm font-medium">Theme Color:</label>
+        <input
+          type="color"
+          value={colorScheme}
+          onChange={(e) => setColorScheme(e.target.value)}
+          className="w-10 h-10 rounded-full cursor-pointer bg-transparent border-none appearance-none"
+        />
       </div>
     </div>
   );
