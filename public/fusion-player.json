@@ -1,10 +1,11 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "fusion-player",
+  "homepage": "https://fusionplayer.vercel.app",
   "type": "registry:component",
   "files": [
     {
-      "path": "components/fusion-player.jsx",
+      "path": "https://raw.githubusercontent.com/RanaNakul/Video-player-Component/main/components/fusion-player.jsx",
       "type": "registry:ui",
       "target": "components/ui/fusion-player.jsx"
     }
