@@ -35,7 +35,7 @@ const formatTime = (seconds) => {
 };
 
 const FusionPlayer = forwardRef(
-  ({ src, poster, timeline, colorScheme = "#001959", className }, ref) => {
+  ({ src, poster, timeline, colorScheme = "#fff", className }, ref) => {
     const videoRef = useRef(null);
     const rangeRef = useRef(null);
     const hlsRef = useRef(null);
@@ -288,14 +288,14 @@ const FusionPlayer = forwardRef(
 
     const togglePiP = async (video) => {
       try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture();
-    } else {
-      await video.requestPictureInPicture();
-    }
-  } catch (err) {
-    console.error("PiP toggle failed:", err);
-  }
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await video.requestPictureInPicture();
+        }
+      } catch (err) {
+        console.error("PiP toggle failed:", err);
+      }
     };
 
     const toggleMuted = () => {
@@ -468,7 +468,7 @@ const FusionPlayer = forwardRef(
         ref={containerRef}
         className={cn(
           "relative rounded-xl mx-auto group select-none focus:outline-none bg-black overflow-hidden",
-          cinemaMode ? "w-full h-[73vh]" : "w-[60vw] h-full",
+          cinemaMode ? "max-w-4xl aspect-video" : "w-full max-w-2xl",
           className,
         )}
       >
@@ -578,8 +578,10 @@ const FusionPlayer = forwardRef(
         />
 
         <div
-          className="absolute bottom-0 w-full flex flex-col px-3 pb-2 z-20 gap-1.5 
-            opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out select-none focus:outline-none"
+          className={cn(
+            "absolute bottom-0 w-full flex flex-col px-3 pb-2 z-20 gap-1.5 ",
+            "opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out select-none focus:outline-none",
+          )}
         >
           <div className="relative select-none focus:outline-none">
             {!isSettingsOpen && hoverInfo.show && (
