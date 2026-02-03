@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 body{
-  font-family:  var(--font-inter), system-ui, sans-serif;
+  font-family:  var(---font-manrope), system-ui, sans-serif;
 }
 
 @theme inline {
@@ -102,7 +102,7 @@ body{
 }
 
 .dark {
-  --background:  oklch(0.145 0 0);
+  --background:  oklch(0% 0 0);
   --foreground:  oklch(0.985 0 0);
   --card:  oklch(0.205 0 0);
   --card-foreground:  oklch(0.985 0 0);
@@ -117,7 +117,7 @@ body{
   --accent:  oklch(0.269 0 0);
   --accent-foreground:  oklch(0.985 0 0);
   --destructive:  oklch(0.704 0.191 22.216);
-  --border:  oklch(1 0 0 / 10%);
+  --border:  oklch(26.9% 0 0);
   --input:  oklch(1 0 0 / 15%);
   --ring:  oklch(0.556 0 0);
   --chart-1:  oklch(0.488 0.243 264.376);

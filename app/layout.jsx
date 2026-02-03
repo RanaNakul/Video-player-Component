@@ -1,7 +1,8 @@
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -14,7 +15,6 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-
 export const metadata = {
   title: "Fusion Player Demo",
   description: "A demo application for Fusion Player using Next.js",
@@ -23,16 +23,18 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${manrope.variable} ${inter.variable} antialiased`}
-      >
-         <ThemeProvider
+      <body className={`${manrope.variable} ${inter.variable} antialiased`}>
+        <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="min-h-screen flex flex-col  ">
+            <Navbar />
+            {children}
+            <Footer />
+          </div>
         </ThemeProvider>
       </body>
     </html>

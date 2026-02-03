@@ -4,17 +4,17 @@ import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
     FaGithub,
-    FaTwitter,
     FaFacebook,
     FaInstagram,
     FaLinkedin,
     FaEnvelope,
     FaDiscord,
 } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 
 const defaultItems = [
     { letter: "C", icon: <FaGithub />, label: "Github", href: "#" },
-    { letter: "O", icon: <FaTwitter />, label: "Twitter", href: "#" },
+    { letter: "O", icon: <FaXTwitter />, label: "Twitter", href: "#" },
     { letter: "N", icon: <FaLinkedin />, label: "LinkedIn", href: "#" },
     { letter: "T", icon: <FaInstagram />, label: "Instagram", href: "#" },
     // { letter: "A", icon: <FaFacebook />, label: "Facebook", href: "#" },

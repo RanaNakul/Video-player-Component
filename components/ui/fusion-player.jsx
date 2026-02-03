@@ -421,9 +421,9 @@ const FusionPlayer = forwardRef(
           case "KeyI":
             togglePiP(video);
             break;
-          case "KeyT":
-            setCinemaMode((prev) => !prev);
-            break;
+          // case "KeyT":
+          //   setCinemaMode((prev) => !prev);
+          //   break;
           case "Period":
             if (e.shiftKey) {
               video.playbackRate = Math.min(3, video.playbackRate + 0.25);
@@ -468,7 +468,7 @@ const FusionPlayer = forwardRef(
         ref={containerRef}
         className={cn(
           "relative rounded-xl mx-auto group select-none focus:outline-none bg-black overflow-hidden",
-          cinemaMode ? "max-w-4xl aspect-video" : "w-full max-w-2xl",
+          // cinemaMode ? "max-w-4xl aspect-video" : "w-full max-w-2xl",
           className,
         )}
       >
@@ -737,7 +737,7 @@ const FusionPlayer = forwardRef(
                 />
               </button>
 
-              {!isFullscreen && (
+              {/* {!isFullscreen && (
                 <button
                   onClick={() => setCinemaMode(!cinemaMode)}
                   className="relative hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out group/cinma select-none cursor-pointer"
@@ -759,10 +759,10 @@ const FusionPlayer = forwardRef(
                     />
                   </svg>
                 </button>
-              )}
+              )} */}
 
               <button
-                onClick={togglePiP}
+                onClick={() => togglePiP(videoRef.current)}
                 className="relative hover:bg-neutral-400/20.5 py-1.5 px-3.5 rounded-full transition-all duration-150 ease-out group/pip cursor-pointer"
               >
                 <p className="w-fit bg-black/30 text-neutral-300 px-2 py-1.5 rounded-md text-xs absolute bottom-15 -right-10 font-bold group-hover/pip:visible invisible transition-all duration-150 ease-out text-nowrap">
@@ -881,7 +881,7 @@ const FusionPlayer = forwardRef(
             </div>
             <div className="w-full px-2">
               {qualities.map((level, index) => {
-                const isPremium = level.bitrate.toString() === "8231300";
+                const isPremium = level.bitrate.toString() >= "8";
                 const isActive =
                   currentQuality === qualities.length - 1 - index;
                 return (
