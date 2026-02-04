@@ -6,6 +6,7 @@ import {
   useState,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from "react";
 import Hls from "hls.js";
 import {
@@ -47,6 +48,7 @@ const FusionPlayer = forwardRef(
     const speedTimeoutRef = useRef(null);
     const incrementTimeoutRef = useRef(null);
     const decrementTimeoutRef = useRef(null);
+    const userActivityTimeoutRef = useRef(null);
     const DEFAULT_VOLUME = 0.7;
 
     const [incrementValue, setIncrementValue] = useState(0);
@@ -84,6 +86,8 @@ const FusionPlayer = forwardRef(
     const [isSpeedOpen, setIsSpeedOpen] = useState(false);
     const [currentSpeed, setCurrentSpeed] = useState(1);
     const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false);
+    const [showControls, setShowControls] = useState(true);
+    const [isHovering, setIsHovering] = useState(false);
 
     const isSafari =
       typeof window !== "undefined" &&
@@ -175,7 +179,68 @@ const FusionPlayer = forwardRef(
       });
     };
 
-    const handlePlayPause = async () => {
+    const showVolumeToast = useCallback((v) => {
+      setShowVolumeUI(true);
+      clearTimeout(volumeTimeoutRef.current);
+      volumeTimeoutRef.current = setTimeout(() => setShowVolumeUI(false), 1000);
+    }, []);
+
+    const showSpeedToast = useCallback((v) => {
+      setShowSpeedUI(true);
+      clearTimeout(speedTimeoutRef.current);
+      speedTimeoutRef.current = setTimeout(() => setShowSpeedUI(false), 1000);
+    }, []);
+
+    const showIncrementToast = useCallback((inc) => {
+      setIncrementValue((prev) => prev + inc);
+      setDecrementValue(0);
+      setShowDecrementUI(false);
+      setShowIncrementUI(true);
+      clearTimeout(incrementTimeoutRef.current);
+      incrementTimeoutRef.current = setTimeout(() => {
+        setShowIncrementUI(false);
+        setIncrementValue(0);
+      }, 700);
+    }, []);
+
+    const showDecrementToast = useCallback((dec) => {
+      setDecrementValue((prev) => prev + dec);
+      setIncrementValue(0);
+      setShowIncrementUI(false);
+      setShowDecrementUI(true);
+      clearTimeout(decrementTimeoutRef.current);
+      decrementTimeoutRef.current = setTimeout(() => {
+        setShowDecrementUI(false);
+        setDecrementValue(0);
+      }, 700);
+    }, []);
+
+    const resetUserActivityTimer = useCallback(
+      (isPlayingOverride) => {
+        setShowControls(true);
+        if (userActivityTimeoutRef.current) {
+          clearTimeout(userActivityTimeoutRef.current);
+        }
+
+        const isPlaying =
+          isPlayingOverride !== undefined ? isPlayingOverride : isPlay;
+
+        userActivityTimeoutRef.current = setTimeout(() => {
+          if (
+            !isSettingsOpen &&
+            !isQualityOpen &&
+            !isSpeedOpen &&
+            !isSleepTimerOpen &&
+            isPlaying
+          ) {
+            setShowControls(false);
+          }
+        }, 5000);
+      },
+      [isSettingsOpen, isQualityOpen, isSpeedOpen, isSleepTimerOpen, isPlay],
+    );
+
+    const handlePlayPause = useCallback(async () => {
       const video = videoRef.current;
       if (!video) return;
 
@@ -183,14 +248,24 @@ const FusionPlayer = forwardRef(
         try {
           await video.play();
           setIsPlay(true);
+          resetUserActivityTimer(true);
         } catch (err) {
           if (err.name !== "AbortError") console.error(err);
         }
       } else {
         video.pause();
         setIsPlay(false);
+        resetUserActivityTimer(false);
       }
-    };
+    }, [resetUserActivityTimer]);
+
+    useEffect(() => {
+      return () => {
+        if (userActivityTimeoutRef.current) {
+          clearTimeout(userActivityTimeoutRef.current);
+        }
+      };
+    }, []);
 
     useEffect(() => {
       const video = videoRef.current;
@@ -278,15 +353,15 @@ const FusionPlayer = forwardRef(
       return () => document.removeEventListener("fullscreenchange", onFsChange);
     }, []);
 
-    const toggleFullscreen = () => {
+    const toggleFullscreen = useCallback(() => {
       if (!document.fullscreenElement) {
         containerRef.current.requestFullscreen();
       } else {
         document.exitFullscreen();
       }
-    };
+    }, []);
 
-    const togglePiP = async (video) => {
+    const togglePiP = useCallback(async (video) => {
       try {
         if (document.pictureInPictureElement) {
           await document.exitPictureInPicture();
@@ -296,9 +371,9 @@ const FusionPlayer = forwardRef(
       } catch (err) {
         console.error("PiP toggle failed:", err);
       }
-    };
+    }, []);
 
-    const toggleMuted = () => {
+    const toggleMuted = useCallback(() => {
       const video = videoRef.current;
       if (!video) return;
 
@@ -310,43 +385,7 @@ const FusionPlayer = forwardRef(
         video.volume = 0;
         showVolumeToast(0);
       }
-    };
-
-    const showVolumeToast = (v) => {
-      setShowVolumeUI(true);
-      clearTimeout(volumeTimeoutRef.current);
-      volumeTimeoutRef.current = setTimeout(() => setShowVolumeUI(false), 1000);
-    };
-
-    const showSpeedToast = (v) => {
-      setShowSpeedUI(true);
-      clearTimeout(speedTimeoutRef.current);
-      speedTimeoutRef.current = setTimeout(() => setShowSpeedUI(false), 1000);
-    };
-
-    const showIncrementToast = (inc) => {
-      setIncrementValue((prev) => prev + inc);
-      setDecrementValue(0);
-      setShowDecrementUI(false);
-      setShowIncrementUI(true);
-      clearTimeout(incrementTimeoutRef.current);
-      incrementTimeoutRef.current = setTimeout(() => {
-        setShowIncrementUI(false);
-        setIncrementValue(0);
-      }, 700);
-    };
-
-    const showDecrementToast = (dec) => {
-      setDecrementValue((prev) => prev + dec);
-      setIncrementValue(0);
-      setShowIncrementUI(false);
-      setShowDecrementUI(true);
-      clearTimeout(decrementTimeoutRef.current);
-      decrementTimeoutRef.current = setTimeout(() => {
-        setShowDecrementUI(false);
-        setDecrementValue(0);
-      }, 700);
-    };
+    }, [showVolumeToast]);
 
     useEffect(() => {
       const handleKeyDown = async (e) => {
@@ -454,6 +493,7 @@ const FusionPlayer = forwardRef(
             if (e.code.startsWith("Digit")) {
               const percent = Number(e.code.replace("Digit", "")) * 10;
               video.currentTime = (video.duration * percent) / 100;
+              resetUserActivityTimer();
             }
             break;
         }
@@ -461,14 +501,24 @@ const FusionPlayer = forwardRef(
 
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
+    }, [
+      toggleMuted,
+      toggleFullscreen,
+      handlePlayPause,
+      togglePiP,
+      showDecrementToast,
+      showIncrementToast,
+      showVolumeToast,
+      showSpeedToast,
+      resetUserActivityTimer,
+    ]);
 
     return (
       <div
         ref={containerRef}
         className={cn(
           "relative rounded-xl mx-auto group select-none focus:outline-none bg-black overflow-hidden",
-          // cinemaMode ? "max-w-4xl aspect-video" : "w-full max-w-2xl",
+          !showControls && isPlay && "cursor-none",
           className,
         )}
       >
@@ -539,7 +589,24 @@ const FusionPlayer = forwardRef(
             setIsSpeedOpen(false);
             setIsSleepTimerOpen(false);
           }}
-          className="absolute z-10 flex items-center justify-center inset-0 select-none focus:outline-none"
+                 onMouseMove={() => {
+          if (isHovering) resetUserActivityTimer();
+        }}
+        onMouseEnter={() => {
+          setIsHovering(true);
+          resetUserActivityTimer();
+        }}
+        onMouseLeave={() => {
+          setIsHovering(false);
+          setShowControls(false);
+          if (userActivityTimeoutRef.current) {
+            clearTimeout(userActivityTimeoutRef.current);
+          }
+        }}
+          className={cn(
+            "absolute z-10 flex items-center justify-center inset-0 select-none focus:outline-none",
+            !showControls && isPlay && "cursor-none",
+          )}
         >
           <div
             className={cn(
@@ -579,9 +646,13 @@ const FusionPlayer = forwardRef(
 
         <div
           className={cn(
-            "absolute bottom-0 w-full flex flex-col px-3 pb-2 z-20 gap-1.5 ",
-            "opacity-0 group-hover:opacity-100 transition-all duration-150 ease-out select-none focus:outline-none",
+            "absolute bottom-0 w-full flex flex-col px-3 pb-2 z-20 gap-1.5 transition-all duration-150 ease-out select-none focus:outline-none",
+            showControls ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
+          onMouseEnter={() => {
+            setIsHovering(true);
+            setShowControls(true);
+          }}
         >
           <div className="relative select-none focus:outline-none">
             {!isSettingsOpen && hoverInfo.show && (
