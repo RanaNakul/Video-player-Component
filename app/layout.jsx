@@ -25,7 +25,7 @@ export const metadata = {
     siteName: "Fusion Player",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-img.png",
         width: 1200,
         height: 630,
         alt: "Fusion Player Preview",
