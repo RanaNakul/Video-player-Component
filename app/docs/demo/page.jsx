@@ -3,15 +3,12 @@
 import FusionPlayer from "@/components/ui/fusion-player";
 import { cn } from "@/lib/utils";
 import {
-  Play,
-  Zap,
   Settings,
-  Shield,
   Keyboard,
-  Monitor,
   Code,
   View,
   Copy,
+  PictureInPicture,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -98,12 +95,11 @@ export default function DemoPage() {
         </div>
         <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-border">
           <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4">
-            <Monitor className="w-5 h-5 text-emerald-500" />
+            <PictureInPicture className="w-5 h-5 text-emerald-500" />
           </div>
-          <h3 className=" font-bold mb-2">Cinema Mode</h3>
+          <h3 className=" font-bold mb-2">Picture-In-Picture</h3>
           <p className="text-sm text-neutral-500">
-            Immersive viewing experience with a single click or &apos;T&apos;
-            shortcut.
+            Pop the video into a floating window with a single click or press &apos;i&apos; shortcut.
           </p>
         </div>
         <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-border">
@@ -139,7 +135,7 @@ export default function DemoPage() {
 
 function CodeBlock({ code }) {
   const parts = code.split(
-    /(".*?"|'.*?'|`.*?`|\/\*[\s\S]*?\*\/|\/\/.*|@\w+|--\w+|(?:\b(?:div|className|return|function|VideoPageDome|React|FusionPlayer)\b))/g,
+    /(".*?"|'.*?'|`.*?`|\/\*[\s\S]*?\*\/|\/\/.*|@\w+|--\w+|(?:\b(?:div|className|return|function|VideoPageDome|React|FusionPlayer|import)\b))/g,
   );
 
   return (
@@ -191,7 +187,7 @@ function CodeBlock({ code }) {
             );
 
           if (
-            /^(div|function)$/.test(
+            /^(div|function|import)$/.test(
               part,
             )
           )

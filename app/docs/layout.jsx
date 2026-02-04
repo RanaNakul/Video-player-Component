@@ -81,7 +81,7 @@ export default function DocsLayout({ children }) {
                   {item.title}
                 </Link>
               ) : (
-                <div className="mt-2">
+                <div className="my-2">
                   <div className="flex items-center gap-3 px-3 py-2 text-sm font-bold dark:text-neutral-200 ">
                     {item.icon}
                     {item.title}

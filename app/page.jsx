@@ -10,6 +10,7 @@ import {
   Layout,
   ArrowRight,
   Palette,
+  PictureInPicture,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ColorPicker, useColor } from "react-color-palette";
@@ -167,9 +168,9 @@ export default function Home() {
               desc: "Pass any color accent to perfectly match your application brand.",
             },
             {
-              icon: <Monitor className="w-5 h-5" />,
-              title: "Cinema Mode",
-              desc: "Immersive wide-screen experience with a dedicated theater toggle.",
+              icon: <PictureInPicture className="w-5 h-5" />,
+              title: "Picture-In-Picture",
+              desc: "Pop the video into a floating window and keep watching while you multitask across apps or tabs.",
             },
             {
               icon: <Smartphone className="w-5 h-5" />,

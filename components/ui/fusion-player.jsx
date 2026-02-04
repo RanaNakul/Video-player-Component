@@ -1041,7 +1041,6 @@ const audio = {
 const view = {
   section: "View",
   items: [
-    { label: "Toggle theatre mode", keys: ["T"] },
     { label: "Toggle fullscreen", keys: ["F"] },
     { label: "Toggle Picture-in-Picture", keys: ["I"] },
     { label: "Close dialog / exit", keys: ["Esc"] },
@@ -1111,14 +1110,14 @@ function KeyboardShortcutsModal({ open, onClose }) {
           </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
           {/* LEFT COLUMN */}
-          <div className="mb-6">
+          <div className="">
             {playback && <ShortcutSection {...playback} />}
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="space-y-3">
+          <div className="space-y-8 md:space-y-3">
             {audio && <ShortcutSection {...audio} />}
             {view && <ShortcutSection {...view} />}
           </div>
