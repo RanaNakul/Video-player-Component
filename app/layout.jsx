@@ -16,8 +16,29 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Fusion Player Demo",
-  description: "A demo application for Fusion Player using Next.js",
+  title: "Fusion Player",
+  description: "A modern, customizable media player for the web.",
+  openGraph: {
+    title: "Fusion Player",
+    description: "A modern, customizable media player for the web.",
+    url: "https://fusionplayer.vercel.app",
+    siteName: "Fusion Player",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Fusion Player Preview",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fusion Player",
+    description: "A modern, customizable media player for the web.",
+    images: ["/og-img.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
